@@ -2,6 +2,7 @@ const STORAGE_KEY = "learnmusic:v1";
 
 const DEFAULT_STATE = {
   currentPractice: 1,
+  currentPitchCard: "stable",
   bestStreak: 0,
   settings: {
     direction: "random",
@@ -32,6 +33,7 @@ export function loadState() {
       ...structuredClone(DEFAULT_STATE),
       ...parsed,
       currentPractice,
+      currentPitchCard: parsed.currentPitchCard ?? DEFAULT_STATE.currentPitchCard,
       bestStreak: parsed.bestStreak ?? DEFAULT_STATE.bestStreak,
       settings: {
         ...DEFAULT_STATE.settings,

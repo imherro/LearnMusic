@@ -64,7 +64,7 @@ button:disabled {
 
 .hero {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   min-height: calc(100vh - 32px);
   padding: 28px;
   border-radius: 8px;
@@ -109,6 +109,45 @@ h2 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin: 20px 0;
+}
+
+.pitch-card-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: -8px 0 18px;
+}
+
+.pitch-card-rail[hidden] {
+  display: none;
+}
+
+.pitch-card {
+  display: grid;
+  gap: 4px;
+  min-height: 64px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--panel);
+  padding: 8px;
+  text-align: left;
+}
+
+.pitch-card strong {
+  font-size: 0.95rem;
+}
+
+.pitch-card small {
+  color: var(--muted);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.pitch-card[data-active="true"] {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  box-shadow: inset 0 0 0 2px rgba(45, 120, 212, 0.12);
 }
 
 .stage-step {
@@ -361,6 +400,7 @@ h2 {
 
 .answer-button:not(:disabled):hover,
 .stage-step:not(:disabled):hover,
+.pitch-card:not(:disabled):hover,
 .icon-action:not(:disabled):hover,
 .text-action:hover {
   transform: translateY(-1px);
@@ -584,6 +624,10 @@ h2 {
 
   .stage-rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pitch-card-rail {
+    grid-template-columns: 1fr;
   }
 
   .round-meter {

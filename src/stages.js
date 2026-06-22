@@ -38,6 +38,44 @@ export const STAGES = [
   },
 ];
 
+export const PITCH_CARDS = [
+  {
+    id: "stable",
+    title: "稳定音",
+    subtitle: "1 / 3 / 5",
+    lessonDegrees: ["1", "3", "5"],
+    rungs: [["1", "5"], ["1", "3"], ["3", "5"], ["1", "3", "5"]],
+  },
+  {
+    id: "near-home",
+    title: "邻近音",
+    subtitle: "1 / 2 / 3",
+    lessonDegrees: ["2"],
+    rungs: [["1", "2"], ["2", "3"], ["1", "2", "3"]],
+  },
+  {
+    id: "near-open",
+    title: "上方邻近",
+    subtitle: "5 / 6 / 1",
+    lessonDegrees: ["6"],
+    rungs: [["5", "6"], ["6", "1"], ["5", "6", "1"]],
+  },
+  {
+    id: "tendency",
+    title: "倾向音",
+    subtitle: "3 / 4 / 5 · 6 / 7 / 1",
+    lessonDegrees: ["4", "7"],
+    rungs: [["3", "4"], ["4", "5"], ["6", "7"], ["7", "1"], ["3", "4", "5"], ["6", "7", "1"]],
+  },
+  {
+    id: "all",
+    title: "全部音",
+    subtitle: "1 - 7",
+    lessonDegrees: [],
+    rungs: [["1", "2", "3", "5", "6"], ["3", "4", "5"], ["6", "7", "1"], ["1", "2", "3", "4", "5", "6", "7"]],
+  },
+];
+
 const MAJOR_SCALE = [
   { degree: "1", name: "C", semitone: 0 },
   { degree: "2", name: "D", semitone: 2 },
@@ -62,30 +100,14 @@ const INTERVAL_LADDER = [
   [5, 8],
 ];
 
-const PITCH_LADDER = [
-  ["1", "5"],
-  ["1", "3"],
-  ["3", "5"],
-  ["1", "3", "5"],
-];
-
-const PITCH_LESSONS = [
-  {
-    degree: "1",
-    text: "1 是家，听起来最落地。",
-  },
-  {
-    degree: "3",
-    text: "3 很稳定，比 1 明亮一点。",
-  },
-  {
-    degree: "5",
-    text: "5 更开阔，像站得更高。",
-  },
-];
+const PITCH_GROUP_SIZE = 10;
 
 export function getStage(stageId) {
   return STAGES.find((stage) => stage.id === stageId) ?? STAGES[0];
+}
+
+export function getPitchCard(cardId) {
+  return PITCH_CARDS.find((card) => card.id === cardId) ?? PITCH_CARDS[0];
 }
 
 export function getScaleNotes(rangeName = "middle") {
@@ -120,7 +142,7 @@ export function getQuestion(stageId, settings = {}) {
   }
 
   if (stageId === 3) {
-    return getGuidedPitchQuestion(notes, answeredCount);
+    return getGuidedPitchQuestion(notes, answeredCount, settings.pitchCardId);
   }
 
   return getChallengeQuestion(notes, settings.direction, answeredCount);
@@ -194,12 +216,18 @@ function getIntervalContrastQuestion(notes, requestedDirection = "random", answe
   };
 }
 
-function getGuidedPitchQuestion(notes, answeredCount = 0) {
-  if (answeredCount < PITCH_LESSONS.length) {
-    return getPitchLessonQuestion(notes, PITCH_LESSONS[answeredCount]);
+function getGuidedPitchQuestion(notes, answeredCount = 0, pitchCardId = "stable") {
+  const card = getPitchCard(pitchCardId);
+  const lessonDegrees = card.lessonDegrees ?? [];
+
+  if (answeredCount < lessonDegrees.length) {
+    return getPitchLessonQuestion(notes, lessonDegrees[answeredCount], card);
   }
 
-  const pitchSet = PITCH_LADDER[Math.min(PITCH_LADDER.length - 1, Math.floor((answeredCount - PITCH_LESSONS.length) / 2))];
+  const practiceIndex = Math.max(0, answeredCount - lessonDegrees.length);
+  const practiceSlots = Math.max(1, PITCH_GROUP_SIZE - lessonDegrees.length);
+  const rungIndex = Math.min(card.rungs.length - 1, Math.floor((practiceIndex * card.rungs.length) / practiceSlots));
+  const pitchSet = card.rungs[rungIndex];
   const target = pickPitchNote(notes, pitchSet);
   const home = pickNearestHomeNote(notes, target);
 
@@ -212,9 +240,10 @@ function getGuidedPitchQuestion(notes, answeredCount = 0) {
     answers: pitchAnswers(pitchSet),
     choiceNotes: getChoiceNotes(notes, pitchSet, target),
     homeNote: home,
-    prompt: pitchSet.length === 2 ? `二选一：${pitchSet.join(" / ")}` : `三选一：1 / 3 / 5`,
+    prompt: `${card.title} · ${pitchSet.length === 2 ? "二选一" : `${pitchSet.length} 选一`}：${pitchSet.join(" / ")}`,
     detail: `1 → ${target.degree}`,
     hint: getPitchHint(target.degree),
+    pitchCardId: card.id,
   };
 }
 
@@ -245,9 +274,10 @@ function getChallengeQuestion(notes, requestedDirection = "random", answeredCoun
   };
 }
 
-function getPitchLessonQuestion(notes, lesson) {
-  const target = pickPitchNote(notes, [lesson.degree]);
+function getPitchLessonQuestion(notes, degree, card) {
+  const target = pickPitchNote(notes, [degree]);
   const home = pickNearestHomeNote(notes, target);
+  const hint = getPitchHint(degree);
 
   return {
     stageId: 3,
@@ -255,13 +285,14 @@ function getPitchLessonQuestion(notes, lesson) {
     notes: [target],
     playNotes: [home, target, home, target],
     answer: "heard",
-    targetDegree: lesson.degree,
+    targetDegree: degree,
     answers: [{ value: "heard", label: "听懂了" }],
-    choiceNotes: getChoiceNotes(notes, ["1", "3", "5"], target),
+    choiceNotes: getChoiceNotes(notes, card.rungs[card.rungs.length - 1], target),
     homeNote: home,
-    prompt: lesson.text,
-    detail: `1 → ${lesson.degree}`,
-    hint: lesson.text,
+    prompt: `${card.title} · ${hint}`,
+    detail: `1 → ${degree}`,
+    hint,
+    pitchCardId: card.id,
   };
 }
 

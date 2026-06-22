@@ -1,11 +1,12 @@
-import { playCorrection, playFeedback, playQuestion, playReferenceC } from "./audio.js?v=20260622-4";
-import { formatAnswer, getQuestion, getStage, judgeAnswer, STAGES } from "./stages.js?v=20260622-4";
-import { loadState, recordAnswer, resetState, saveState } from "./storage.js?v=20260622-4";
+import { playCorrection, playFeedback, playQuestion, playReferenceC } from "./audio.js?v=20260622-6";
+import { formatAnswer, getPitchCard, getQuestion, getStage, judgeAnswer, PITCH_CARDS, STAGES } from "./stages.js?v=20260622-6";
+import { loadState, recordAnswer, resetState, saveState } from "./storage.js?v=20260622-6";
 
 const GROUP_SIZE = 10;
 
 const elements = {
   stageRail: document.querySelector("#stageRail"),
+  pitchCardRail: document.querySelector("#pitchCardRail"),
   stageTitle: document.querySelector("#stageTitle"),
   roundProgress: document.querySelector("#roundProgress"),
   meterFill: document.querySelector("#meterFill"),
@@ -81,6 +82,7 @@ function nextQuestion() {
     currentQuestion = getQuestion(session.stageId, {
       ...savedState.settings,
       answeredCount: session.answers.length,
+      pitchCardId: savedState.currentPitchCard,
     });
   } catch (error) {
     elements.answerState.textContent = "无法出题";
@@ -203,16 +205,47 @@ function renderStageRail() {
 
 function renderStage() {
   const stage = getStage(session.stageId);
+  const pitchCard = getPitchCard(savedState.currentPitchCard);
 
   elements.stageTitle.textContent = stage.title;
   elements.primaryAction.querySelector("span:last-child").textContent = "开始";
   elements.replayButton.disabled = true;
   elements.answerState.textContent = "准备";
-  elements.answerDetail.textContent = `${stage.title} · 可随时切换练习`;
+  elements.answerDetail.textContent = stage.id === 3
+    ? `${pitchCard.title} · ${pitchCard.subtitle}`
+    : `${stage.title} · 可随时切换练习`;
   renderStageRail();
+  renderPitchCards();
   renderAnswers();
   renderProgress();
   renderHistory();
+}
+
+function renderPitchCards() {
+  elements.pitchCardRail.innerHTML = "";
+  elements.pitchCardRail.hidden = session.stageId !== 3;
+
+  if (session.stageId !== 3) {
+    return;
+  }
+
+  for (const card of PITCH_CARDS) {
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.className = "pitch-card";
+    button.dataset.active = String(card.id === savedState.currentPitchCard);
+    button.innerHTML = `<strong>${card.title}</strong><small>${card.subtitle}</small>`;
+    button.addEventListener("click", () => {
+      savedState.currentPitchCard = card.id;
+      saveState(savedState);
+      session = createSession(3);
+      currentQuestion = null;
+      hasAnswered = false;
+      renderStage();
+    });
+    elements.pitchCardRail.append(button);
+  }
 }
 
 function renderAnswers(selectedAnswer = null) {
