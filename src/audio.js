@@ -22,8 +22,9 @@ export async function playQuestion(question, speed = "medium") {
   const context = await ensureAudio();
   const timing = SPEEDS[speed] ?? SPEEDS.medium;
   let cursor = context.currentTime + 0.04;
+  const notes = question.playNotes ?? question.notes;
 
-  question.notes.forEach((note) => {
+  notes.forEach((note) => {
     playTone(context, note.midi, cursor, timing.note);
     cursor += timing.note + timing.gap;
   });

@@ -1,8 +1,18 @@
+const DEGREE_NAMES = {
+  2: "二度",
+  3: "三度",
+  4: "四度",
+  5: "五度",
+  6: "六度",
+  7: "七度",
+  8: "八度",
+};
+
 export const STAGES = [
   {
     id: 1,
-    title: "两音高低",
-    shortTitle: "高低",
+    title: "方向热身",
+    shortTitle: "热身",
     answers: [
       { value: "up", label: "上升" },
       { value: "down", label: "下降" },
@@ -10,42 +20,21 @@ export const STAGES = [
   },
   {
     id: 2,
-    title: "两音音程",
+    title: "音程对比",
     shortTitle: "音程",
-    answers: [
-      { value: 2, label: "二度" },
-      { value: 3, label: "三度" },
-      { value: 4, label: "四度" },
-      { value: 5, label: "五度" },
-      { value: 6, label: "六度" },
-      { value: 7, label: "七度" },
-      { value: 8, label: "八度" },
-    ],
+    answers: intervalAnswers([2, 3]),
   },
   {
     id: 3,
-    title: "三音走势",
-    shortTitle: "走势",
-    answers: [
-      { value: "up-up", label: "升升" },
-      { value: "up-down", label: "升降" },
-      { value: "down-up", label: "降升" },
-      { value: "down-down", label: "降降" },
-    ],
+    title: "音高入门",
+    shortTitle: "音高",
+    answers: pitchAnswers(["1", "3", "5"]),
   },
   {
     id: 4,
-    title: "单音音高",
-    shortTitle: "音高",
-    answers: [
-      { value: "1", label: "1" },
-      { value: "2", label: "2" },
-      { value: "3", label: "3" },
-      { value: "4", label: "4" },
-      { value: "5", label: "5" },
-      { value: "6", label: "6" },
-      { value: "7", label: "7" },
-    ],
+    title: "综合挑战",
+    shortTitle: "综合",
+    answers: pitchAnswers(["1", "2", "3", "4", "5", "6", "7"]),
   },
 ];
 
@@ -65,6 +54,20 @@ const RANGES = {
   high: { startOctave: 5, endOctave: 6 },
 };
 
+const INTERVAL_LADDER = [
+  [2, 3],
+  [3, 5],
+  [2, 5],
+  [3, 4],
+  [5, 8],
+];
+
+const PITCH_LADDER = [
+  ["1", "3", "5"],
+  ["1", "2", "3", "5", "6"],
+  ["1", "2", "3", "4", "5", "6", "7"],
+];
+
 export function getStage(stageId) {
   return STAGES.find((stage) => stage.id === stageId) ?? STAGES[0];
 }
@@ -79,6 +82,7 @@ export function getScaleNotes(rangeName = "middle") {
         name: note.name,
         degree: note.degree,
         midi: 12 * (octave + 1) + note.semitone,
+        octave,
         scaleIndex: octave * 7 + MAJOR_SCALE.findIndex((item) => item.name === note.name),
       });
     }
@@ -89,20 +93,21 @@ export function getScaleNotes(rangeName = "middle") {
 
 export function getQuestion(stageId, settings = {}) {
   const notes = getScaleNotes(settings.range);
+  const answeredCount = settings.answeredCount ?? 0;
 
   if (stageId === 1) {
-    return getDirectionQuestion(notes, settings.direction);
+    return getWarmupQuestion(notes, settings.direction);
   }
 
   if (stageId === 2) {
-    return getIntervalQuestion(notes, settings.direction);
+    return getIntervalContrastQuestion(notes, settings.direction, answeredCount);
   }
 
   if (stageId === 3) {
-    return getContourQuestion(notes);
+    return getGuidedPitchQuestion(notes, answeredCount);
   }
 
-  return getPitchQuestion(notes);
+  return getChallengeQuestion(notes, settings.direction, answeredCount);
 }
 
 export function judgeAnswer(question, answer) {
@@ -110,15 +115,15 @@ export function judgeAnswer(question, answer) {
 }
 
 export function formatAnswer(question) {
-  if (question.stageId === 1) {
+  if (question.kind === "direction") {
     return question.answer === "up" ? "上升" : "下降";
   }
 
-  if (question.stageId === 2) {
-    return `${question.answer}度`;
+  if (question.kind === "interval") {
+    return DEGREE_NAMES[question.answer] ?? `${question.answer}度`;
   }
 
-  if (question.stageId === 3) {
+  if (question.kind === "contour") {
     return {
       "up-up": "升升",
       "up-down": "升降",
@@ -130,26 +135,88 @@ export function formatAnswer(question) {
   return question.answer;
 }
 
-function getDirectionQuestion(notes, requestedDirection = "random") {
-  const direction = requestedDirection === "up" || requestedDirection === "down"
-    ? requestedDirection
-    : sample(["up", "down"]);
-  const pair = pickOrderedPair(notes, direction);
+function getWarmupQuestion(notes, requestedDirection = "random") {
+  if (Math.random() < 0.68) {
+    const direction = requestedDirection === "up" || requestedDirection === "down"
+      ? requestedDirection
+      : sample(["up", "down"]);
+    const pair = pickOrderedPair(notes, direction);
+
+    return {
+      stageId: 1,
+      kind: "direction",
+      notes: pair,
+      playNotes: pair,
+      answer: direction,
+      answers: STAGES[0].answers,
+      prompt: "听第二个音往哪边走",
+      detail: formatNotes(pair),
+    };
+  }
+
+  return getContourQuestion(notes);
+}
+
+function getIntervalContrastQuestion(notes, requestedDirection = "random", answeredCount = 0) {
+  const pairOptions = INTERVAL_LADDER[Math.floor(answeredCount / 2) % INTERVAL_LADDER.length];
+  const size = sample(pairOptions);
+  const question = getIntervalQuestion(notes, requestedDirection, size);
 
   return {
-    stageId: 1,
-    notes: pair,
-    answer: direction,
-    detail: formatNotes(pair),
+    ...question,
+    answers: intervalAnswers(pairOptions),
+    prompt: `${pairOptions.map((interval) => DEGREE_NAMES[interval]).join(" / ")} 对比`,
+    contrast: pairOptions,
   };
 }
 
-function getIntervalQuestion(notes, requestedDirection = "random") {
+function getGuidedPitchQuestion(notes, answeredCount = 0) {
+  const pitchSet = PITCH_LADDER[Math.min(PITCH_LADDER.length - 1, Math.floor(answeredCount / 4))];
+  const target = pickPitchNote(notes, pitchSet);
+  const home = pickNearestHomeNote(notes, target);
+
+  return {
+    stageId: 3,
+    kind: "pitch",
+    notes: [target],
+    playNotes: [home, target],
+    answer: target.degree,
+    answers: pitchAnswers(pitchSet),
+    prompt: `先听 1，再辨目标音`,
+    detail: `1 → ${target.degree}`,
+  };
+}
+
+function getChallengeQuestion(notes, requestedDirection = "random", answeredCount = 0) {
+  if (answeredCount % 2 === 0) {
+    const size = randomInt(2, 8);
+    return {
+      ...getIntervalQuestion(notes, requestedDirection, size),
+      answers: intervalAnswers([2, 3, 4, 5, 6, 7, 8]),
+      prompt: "综合音程",
+    };
+  }
+
+  const target = pickPitchNote(notes, ["1", "2", "3", "4", "5", "6", "7"]);
+  const home = pickNearestHomeNote(notes, target);
+
+  return {
+    stageId: 4,
+    kind: "pitch",
+    notes: [target],
+    playNotes: [home, target],
+    answer: target.degree,
+    answers: pitchAnswers(["1", "2", "3", "4", "5", "6", "7"]),
+    prompt: "综合音高",
+    detail: `1 → ${target.degree}`,
+  };
+}
+
+function getIntervalQuestion(notes, requestedDirection = "random", size = randomInt(2, 8)) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     const direction = requestedDirection === "up" || requestedDirection === "down"
       ? requestedDirection
       : sample(["up", "down"]);
-    const size = randomInt(2, 8);
     const startIndex = randomInt(0, notes.length - 1);
     const offset = size - 1;
     const targetIndex = direction === "up" ? startIndex + offset : startIndex - offset;
@@ -158,7 +225,9 @@ function getIntervalQuestion(notes, requestedDirection = "random") {
       const pair = [notes[startIndex], notes[targetIndex]];
       return {
         stageId: 2,
+        kind: "interval",
         notes: pair,
+        playNotes: pair,
         answer: size,
         direction,
         detail: formatNotes(pair),
@@ -190,9 +259,18 @@ function getContourQuestion(notes) {
 
     const triad = [notes[firstIndex], notes[secondIndex], notes[thirdIndex]];
     return {
-      stageId: 3,
+      stageId: 1,
+      kind: "contour",
       notes: triad,
+      playNotes: triad,
       answer: contour,
+      answers: [
+        { value: "up-up", label: "升升" },
+        { value: "up-down", label: "升降" },
+        { value: "down-up", label: "降升" },
+        { value: "down-down", label: "降降" },
+      ],
+      prompt: "听三个音的走势",
       detail: formatNotes(triad),
     };
   }
@@ -200,15 +278,36 @@ function getContourQuestion(notes) {
   throw new Error("无法生成三音走势题，请调整音域。");
 }
 
-function getPitchQuestion(notes) {
-  const note = sample(notes);
+function intervalAnswers(intervals) {
+  return intervals.map((interval) => ({
+    value: interval,
+    label: DEGREE_NAMES[interval] ?? `${interval}度`,
+  }));
+}
 
-  return {
-    stageId: 4,
-    notes: [note],
-    answer: note.degree,
-    detail: note.degree,
-  };
+function pitchAnswers(degrees) {
+  return degrees.map((degree) => ({
+    value: degree,
+    label: degree,
+  }));
+}
+
+function pickPitchNote(notes, allowedDegrees) {
+  const candidates = notes.filter((note) => allowedDegrees.includes(note.degree));
+  return sample(candidates);
+}
+
+function pickNearestHomeNote(notes, target) {
+  const homeNotes = notes.filter((note) => note.degree === "1");
+  return homeNotes.reduce((closest, note) => {
+    if (!closest) {
+      return note;
+    }
+
+    return Math.abs(note.midi - target.midi) < Math.abs(closest.midi - target.midi)
+      ? note
+      : closest;
+  }, null);
 }
 
 function formatNotes(notes) {

@@ -65,7 +65,7 @@ export function recordAnswer(state, stageId, question, isCorrect) {
   totals.correct += isCorrect ? 1 : 0;
   state.totals[key] = totals;
 
-  if (stageId === 4) {
+  if (question.kind === "pitch") {
     const pitch = question.answer;
     const pitchTotals = state.pitchTotals[pitch] ?? { correct: 0, total: 0 };
 

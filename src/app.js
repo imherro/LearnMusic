@@ -1,6 +1,6 @@
-import { playFeedback, playQuestion, playReferenceC } from "./audio.js?v=20260622-2";
-import { formatAnswer, getQuestion, getStage, judgeAnswer, STAGES } from "./stages.js?v=20260622-2";
-import { loadState, recordAnswer, resetState, saveState } from "./storage.js?v=20260622-2";
+import { playFeedback, playQuestion, playReferenceC } from "./audio.js?v=20260622-3";
+import { formatAnswer, getQuestion, getStage, judgeAnswer, STAGES } from "./stages.js?v=20260622-3";
+import { loadState, recordAnswer, resetState, saveState } from "./storage.js?v=20260622-3";
 
 const GROUP_SIZE = 10;
 
@@ -78,7 +78,10 @@ function nextQuestion() {
   }
 
   try {
-    currentQuestion = getQuestion(session.stageId, savedState.settings);
+    currentQuestion = getQuestion(session.stageId, {
+      ...savedState.settings,
+      answeredCount: session.answers.length,
+    });
   } catch (error) {
     elements.answerState.textContent = "无法出题";
     elements.answerDetail.textContent = error.message;
@@ -88,7 +91,7 @@ function nextQuestion() {
   hasAnswered = false;
   elements.replayButton.disabled = false;
   elements.answerState.textContent = "听题";
-  elements.answerDetail.textContent = `第 ${session.answers.length + 1} 题`;
+  elements.answerDetail.textContent = currentQuestion.prompt ?? `第 ${session.answers.length + 1} 题`;
   elements.primaryAction.querySelector("span:last-child").textContent = "播放";
   elements.pulseCore.classList.add("is-listening");
   renderAnswers();
@@ -106,7 +109,7 @@ async function playCurrentQuestion() {
 
   elements.pulseCore.classList.add("is-listening");
   await playQuestion(currentQuestion, savedState.settings.speed);
-  window.setTimeout(() => elements.pulseCore.classList.remove("is-listening"), 760);
+  window.setTimeout(() => elements.pulseCore.classList.remove("is-listening"), getQuestionDuration(currentQuestion));
 }
 
 function answerQuestion(answer) {
@@ -212,8 +215,9 @@ function renderStage() {
 function renderAnswers(selectedAnswer = null) {
   const stage = getStage(session.stageId);
   elements.answerGrid.innerHTML = "";
+  const answers = currentQuestion?.answers ?? stage.answers;
 
-  for (const answer of stage.answers) {
+  for (const answer of answers) {
     const button = document.createElement("button");
     const isCorrectAnswer = currentQuestion && String(answer.value) === String(currentQuestion.answer);
     const isSelected = selectedAnswer !== null && String(answer.value) === String(selectedAnswer);
@@ -305,6 +309,17 @@ function showFeedbackBurst(isCorrect, points) {
   elements.feedbackBurst.classList.remove("is-showing");
   void elements.feedbackBurst.offsetWidth;
   elements.feedbackBurst.classList.add("is-showing");
+}
+
+function getQuestionDuration(question) {
+  const noteCount = (question.playNotes ?? question.notes ?? []).length;
+  const speedDurations = {
+    slow: 940,
+    medium: 700,
+    fast: 520,
+  };
+
+  return Math.max(520, noteCount * (speedDurations[savedState.settings.speed] ?? 700));
 }
 
 function getAnswerDetail(question) {
