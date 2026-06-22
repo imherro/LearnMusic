@@ -1,6 +1,6 @@
-import { playFeedback, playQuestion, playReferenceC } from "./audio.js";
-import { formatAnswer, getQuestion, getStage, judgeAnswer, STAGES } from "./stages.js";
-import { loadState, recordAnswer, resetState, saveState } from "./storage.js";
+import { playFeedback, playQuestion, playReferenceC } from "./audio.js?v=20260622-2";
+import { formatAnswer, getQuestion, getStage, judgeAnswer, STAGES } from "./stages.js?v=20260622-2";
+import { loadState, recordAnswer, resetState, saveState } from "./storage.js?v=20260622-2";
 
 const GROUP_SIZE = 10;
 
