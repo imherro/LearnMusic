@@ -38,25 +38,25 @@ export const STAGES = [
     title: "单音音高",
     shortTitle: "音高",
     answers: [
-      { value: "C", label: "C" },
-      { value: "D", label: "D" },
-      { value: "E", label: "E" },
-      { value: "F", label: "F" },
-      { value: "G", label: "G" },
-      { value: "A", label: "A" },
-      { value: "B", label: "B" },
+      { value: "1", label: "1" },
+      { value: "2", label: "2" },
+      { value: "3", label: "3" },
+      { value: "4", label: "4" },
+      { value: "5", label: "5" },
+      { value: "6", label: "6" },
+      { value: "7", label: "7" },
     ],
   },
 ];
 
 const MAJOR_SCALE = [
-  { name: "C", semitone: 0 },
-  { name: "D", semitone: 2 },
-  { name: "E", semitone: 4 },
-  { name: "F", semitone: 5 },
-  { name: "G", semitone: 7 },
-  { name: "A", semitone: 9 },
-  { name: "B", semitone: 11 },
+  { degree: "1", name: "C", semitone: 0 },
+  { degree: "2", name: "D", semitone: 2 },
+  { degree: "3", name: "E", semitone: 4 },
+  { degree: "4", name: "F", semitone: 5 },
+  { degree: "5", name: "G", semitone: 7 },
+  { degree: "6", name: "A", semitone: 9 },
+  { degree: "7", name: "B", semitone: 11 },
 ];
 
 const RANGES = {
@@ -77,6 +77,7 @@ export function getScaleNotes(rangeName = "middle") {
     for (const note of MAJOR_SCALE) {
       notes.push({
         name: note.name,
+        degree: note.degree,
         midi: 12 * (octave + 1) + note.semitone,
         scaleIndex: octave * 7 + MAJOR_SCALE.findIndex((item) => item.name === note.name),
       });
@@ -139,7 +140,7 @@ function getDirectionQuestion(notes, requestedDirection = "random") {
     stageId: 1,
     notes: pair,
     answer: direction,
-    detail: `${pair[0].name} → ${pair[1].name}`,
+    detail: formatNotes(pair),
   };
 }
 
@@ -160,7 +161,7 @@ function getIntervalQuestion(notes, requestedDirection = "random") {
         notes: pair,
         answer: size,
         direction,
-        detail: `${pair[0].name} → ${pair[1].name}`,
+        detail: formatNotes(pair),
       };
     }
   }
@@ -192,7 +193,7 @@ function getContourQuestion(notes) {
       stageId: 3,
       notes: triad,
       answer: contour,
-      detail: triad.map((note) => note.name).join(" → "),
+      detail: formatNotes(triad),
     };
   }
 
@@ -205,9 +206,13 @@ function getPitchQuestion(notes) {
   return {
     stageId: 4,
     notes: [note],
-    answer: note.name,
-    detail: note.name,
+    answer: note.degree,
+    detail: note.degree,
   };
+}
+
+function formatNotes(notes) {
+  return notes.map((note) => note.degree).join(" → ");
 }
 
 function pickOrderedPair(notes, direction) {

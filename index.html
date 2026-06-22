@@ -11,16 +11,16 @@
     <main class="app-shell">
       <section class="hero" aria-label="练习面板">
         <div class="brand-block">
-          <p class="eyebrow">C 大调听音</p>
+          <p class="eyebrow">C 大调听音 · 1=C</p>
           <h1>LearnMusic</h1>
         </div>
 
-        <div class="stage-rail" id="stageRail" aria-label="阶段"></div>
+        <div class="stage-rail" id="stageRail" aria-label="练习"></div>
 
         <section class="practice-surface" aria-label="当前题目">
           <div class="progress-strip">
             <div>
-              <p class="label">当前阶段</p>
+              <p class="label">当前练习</p>
               <h2 id="stageTitle">两音高低</h2>
             </div>
             <div class="round-meter">
@@ -36,8 +36,9 @@
               <div class="pulse-ring"></div>
               <div class="pulse-core" id="pulseCore">♪</div>
             </div>
+            <div class="feedback-burst" id="feedbackBurst" aria-hidden="true"></div>
             <div class="answer-state" id="answerState">准备</div>
-            <div class="answer-detail" id="answerDetail">第 1 阶段</div>
+            <div class="answer-detail" id="answerDetail">选择一种练习开始</div>
           </div>
 
           <div class="control-row">
@@ -48,8 +49,8 @@
             <button class="icon-action" id="replayButton" type="button" aria-label="重听" title="重听" disabled>
               ↻
             </button>
-            <button class="icon-action" id="referenceButton" type="button" aria-label="播放 C" title="播放 C">
-              C
+            <button class="icon-action" id="referenceButton" type="button" aria-label="播放 1" title="播放 1">
+              1
             </button>
           </div>
 
@@ -98,8 +99,18 @@
               <small>错误</small>
             </div>
             <div>
-              <span id="unlockedCount">1</span>
-              <small>解锁</small>
+              <span id="streakCount">0</span>
+              <small>连击</small>
+            </div>
+          </div>
+          <div class="game-strip">
+            <div>
+              <small>积分</small>
+              <strong id="scoreCount">0</strong>
+            </div>
+            <div>
+              <small>本轮徽章</small>
+              <strong id="badgeText">待挑战</strong>
             </div>
           </div>
         </section>

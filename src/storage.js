@@ -1,7 +1,8 @@
 const STORAGE_KEY = "learnmusic:v1";
 
 const DEFAULT_STATE = {
-  unlockedStage: 1,
+  currentPractice: 1,
+  bestStreak: 0,
   settings: {
     direction: "random",
     speed: "medium",
@@ -25,9 +26,13 @@ export function loadState() {
     }
 
     const parsed = JSON.parse(raw);
+    const currentPractice = parsed.currentPractice ?? parsed.unlockedStage ?? DEFAULT_STATE.currentPractice;
+
     return {
       ...structuredClone(DEFAULT_STATE),
       ...parsed,
+      currentPractice,
+      bestStreak: parsed.bestStreak ?? DEFAULT_STATE.bestStreak,
       settings: {
         ...DEFAULT_STATE.settings,
         ...(parsed.settings ?? {}),

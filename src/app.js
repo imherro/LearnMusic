@@ -1,4 +1,4 @@
-import { playQuestion, playReferenceC } from "./audio.js";
+import { playFeedback, playQuestion, playReferenceC } from "./audio.js";
 import { formatAnswer, getQuestion, getStage, judgeAnswer, STAGES } from "./stages.js";
 import { loadState, recordAnswer, resetState, saveState } from "./storage.js";
 
@@ -21,13 +21,16 @@ const elements = {
   rangeSelect: document.querySelector("#rangeSelect"),
   correctCount: document.querySelector("#correctCount"),
   mistakeCount: document.querySelector("#mistakeCount"),
-  unlockedCount: document.querySelector("#unlockedCount"),
+  streakCount: document.querySelector("#streakCount"),
+  scoreCount: document.querySelector("#scoreCount"),
+  badgeText: document.querySelector("#badgeText"),
   historyList: document.querySelector("#historyList"),
   resetButton: document.querySelector("#resetButton"),
+  feedbackBurst: document.querySelector("#feedbackBurst"),
 };
 
 let savedState = loadState();
-let session = createSession(savedState.unlockedStage);
+let session = createSession(savedState.currentPractice);
 let currentQuestion = null;
 let hasAnswered = false;
 
@@ -113,15 +116,26 @@ function answerQuestion(answer) {
 
   const isCorrect = judgeAnswer(currentQuestion, answer);
   hasAnswered = true;
+  const points = isCorrect ? 10 + session.streak * 2 : 0;
+  session.streak = isCorrect ? session.streak + 1 : 0;
+  session.score += points;
   session.answers.push({
     question: currentQuestion,
     answer,
     isCorrect,
+    points,
   });
 
   recordAnswer(savedState, session.stageId, currentQuestion, isCorrect);
-  elements.answerState.textContent = isCorrect ? "正确" : "再练";
-  elements.answerDetail.textContent = `正确答案：${formatAnswer(currentQuestion)} · ${currentQuestion.detail}`;
+  if (isCorrect && session.streak > savedState.bestStreak) {
+    savedState.bestStreak = session.streak;
+    saveState(savedState);
+  }
+
+  void playFeedback(isCorrect);
+  showFeedbackBurst(isCorrect, points);
+  elements.answerState.textContent = isCorrect ? "太棒了" : "差一点";
+  elements.answerDetail.textContent = getAnswerDetail(currentQuestion);
   elements.primaryAction.querySelector("span:last-child").textContent = session.answers.length >= GROUP_SIZE
     ? "完成本组"
     : "下一题";
@@ -137,28 +151,13 @@ function answerQuestion(answer) {
 
 function finishGroup() {
   const allCorrect = session.answers.every((entry) => entry.isCorrect);
-  const isLastStage = session.stageId === STAGES.length;
+  const correctCount = session.answers.filter((entry) => entry.isCorrect).length;
 
-  if (allCorrect && !isLastStage) {
-    const nextStage = session.stageId + 1;
-    savedState.unlockedStage = Math.max(savedState.unlockedStage, nextStage);
-    saveState(savedState);
-    elements.answerState.textContent = "晋级";
-    elements.answerDetail.textContent = `10 题全对，进入${getStage(nextStage).title}`;
-    session = createSession(nextStage);
-    currentQuestion = null;
-    hasAnswered = false;
-    renderStage();
-    return;
-  }
-
-  if (allCorrect) {
-    elements.answerState.textContent = "完成";
-    elements.answerDetail.textContent = "第四阶段 10 题全对";
-  } else {
-    elements.answerState.textContent = "本组结束";
-    elements.answerDetail.textContent = "本阶段继续";
-  }
+  elements.answerState.textContent = allCorrect ? "满分徽章" : "本组结束";
+  elements.answerDetail.textContent = allCorrect
+    ? "10 题全对，可以继续刷分，也可以换练习"
+    : `本组 ${correctCount} / ${GROUP_SIZE}，再来一轮`;
+  elements.badgeText.textContent = allCorrect ? "金色耳朵" : getBadge(correctCount);
 
   currentQuestion = null;
   hasAnswered = false;
@@ -169,6 +168,8 @@ function createSession(stageId) {
   return {
     stageId,
     answers: [],
+    score: 0,
+    streak: 0,
   };
 }
 
@@ -177,19 +178,15 @@ function renderStageRail() {
 
   for (const stage of STAGES) {
     const button = document.createElement("button");
-    const isUnlocked = stage.id <= savedState.unlockedStage;
 
     button.type = "button";
     button.className = "stage-step";
-    button.disabled = !isUnlocked;
     button.dataset.active = String(stage.id === session.stageId);
     button.innerHTML = `<span>${stage.id}</span><strong>${stage.shortTitle}</strong>`;
     button.addEventListener("click", () => {
-      if (!isUnlocked) {
-        return;
-      }
-
       session = createSession(stage.id);
+      savedState.currentPractice = stage.id;
+      saveState(savedState);
       currentQuestion = null;
       hasAnswered = false;
       renderStage();
@@ -202,11 +199,10 @@ function renderStage() {
   const stage = getStage(session.stageId);
 
   elements.stageTitle.textContent = stage.title;
-  elements.unlockedCount.textContent = savedState.unlockedStage;
   elements.primaryAction.querySelector("span:last-child").textContent = "开始";
   elements.replayButton.disabled = true;
   elements.answerState.textContent = "准备";
-  elements.answerDetail.textContent = `第 ${stage.id} 阶段`;
+  elements.answerDetail.textContent = `${stage.title} · 可随时切换练习`;
   renderStageRail();
   renderAnswers();
   renderProgress();
@@ -247,6 +243,9 @@ function renderProgress() {
   elements.meterFill.style.width = `${Math.min(100, (answered / GROUP_SIZE) * 100)}%`;
   elements.correctCount.textContent = correct;
   elements.mistakeCount.textContent = mistakes;
+  elements.streakCount.textContent = session.streak;
+  elements.scoreCount.textContent = session.score;
+  elements.badgeText.textContent = getBadge(correct);
 }
 
 function renderHistory() {
@@ -264,7 +263,7 @@ function renderHistory() {
 
   for (const entry of items) {
     const item = document.createElement("li");
-    item.innerHTML = `<span>${entry.isCorrect ? "正确" : "错误"}</span><strong>${formatAnswer(entry.question)}</strong><small>${entry.question.detail}</small>`;
+    item.innerHTML = `<span>${entry.isCorrect ? "正确" : "错误"}</span><strong>${formatAnswer(entry.question)}</strong><small>${getHistoryDetail(entry)}</small>`;
     item.dataset.correct = String(entry.isCorrect);
     elements.historyList.append(item);
   }
@@ -282,4 +281,47 @@ function getSettingsFromControls() {
     speed: elements.speedSelect.value,
     range: elements.rangeSelect.value,
   };
+}
+
+function getBadge(correctCount) {
+  if (correctCount >= 10) {
+    return "金色耳朵";
+  }
+
+  if (correctCount >= 8) {
+    return "稳定命中";
+  }
+
+  if (correctCount >= 5) {
+    return "继续热身";
+  }
+
+  return "待挑战";
+}
+
+function showFeedbackBurst(isCorrect, points) {
+  elements.feedbackBurst.textContent = isCorrect ? `+${points}` : "再听一次";
+  elements.feedbackBurst.dataset.result = isCorrect ? "correct" : "wrong";
+  elements.feedbackBurst.classList.remove("is-showing");
+  void elements.feedbackBurst.offsetWidth;
+  elements.feedbackBurst.classList.add("is-showing");
+}
+
+function getAnswerDetail(question) {
+  const answer = formatAnswer(question);
+
+  if (!question.detail || question.detail === answer) {
+    return `正确答案：${answer}`;
+  }
+
+  return `正确答案：${answer} · ${question.detail}`;
+}
+
+function getHistoryDetail(entry) {
+  const answer = formatAnswer(entry.question);
+  const detail = entry.question.detail && entry.question.detail !== answer
+    ? entry.question.detail
+    : "单音";
+
+  return `${detail}${entry.points ? ` · +${entry.points}` : ""}`;
 }

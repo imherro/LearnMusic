@@ -34,26 +34,52 @@ export async function playReferenceC() {
   playTone(context, 60, context.currentTime + 0.04, 0.55);
 }
 
-function playTone(context, midi, startTime, duration) {
+export async function playFeedback(isCorrect) {
+  const context = await ensureAudio();
+  const now = context.currentTime + 0.02;
+
+  if (isCorrect) {
+    [72, 76, 79, 84].forEach((midi, index) => {
+      playTone(context, midi, now + index * 0.08, 0.2, {
+        gain: 0.16,
+        type: "triangle",
+        filterFrequency: 2600,
+      });
+    });
+    return;
+  }
+
+  [55, 52].forEach((midi, index) => {
+    playTone(context, midi, now + index * 0.16, 0.28, {
+      gain: 0.13,
+      type: "sawtooth",
+      filterFrequency: 820,
+    });
+  });
+}
+
+function playTone(context, midi, startTime, duration, options = {}) {
   const oscillator = context.createOscillator();
   const overtone = context.createOscillator();
   const gain = context.createGain();
   const overtoneGain = context.createGain();
   const filter = context.createBiquadFilter();
   const frequency = 440 * 2 ** ((midi - 69) / 12);
+  const peakGain = options.gain ?? 0.26;
+  const filterFrequency = options.filterFrequency ?? 1800;
 
-  oscillator.type = "sine";
+  oscillator.type = options.type ?? "sine";
   oscillator.frequency.setValueAtTime(frequency, startTime);
 
   overtone.type = "triangle";
   overtone.frequency.setValueAtTime(frequency * 2, startTime);
 
   filter.type = "lowpass";
-  filter.frequency.setValueAtTime(1800, startTime);
+  filter.frequency.setValueAtTime(filterFrequency, startTime);
 
   gain.gain.setValueAtTime(0.0001, startTime);
-  gain.gain.exponentialRampToValueAtTime(0.26, startTime + 0.025);
-  gain.gain.exponentialRampToValueAtTime(0.08, startTime + duration * 0.72);
+  gain.gain.exponentialRampToValueAtTime(peakGain, startTime + 0.025);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.02, peakGain * 0.32), startTime + duration * 0.72);
   gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
   overtoneGain.gain.setValueAtTime(0.0001, startTime);
