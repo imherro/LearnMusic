@@ -1,6 +1,6 @@
-import { playFeedback, playQuestion, playReferenceC } from "./audio.js?v=20260622-3";
-import { formatAnswer, getQuestion, getStage, judgeAnswer, STAGES } from "./stages.js?v=20260622-3";
-import { loadState, recordAnswer, resetState, saveState } from "./storage.js?v=20260622-3";
+import { playCorrection, playFeedback, playQuestion, playReferenceC } from "./audio.js?v=20260622-4";
+import { formatAnswer, getQuestion, getStage, judgeAnswer, STAGES } from "./stages.js?v=20260622-4";
+import { loadState, recordAnswer, resetState, saveState } from "./storage.js?v=20260622-4";
 
 const GROUP_SIZE = 10;
 
@@ -136,9 +136,12 @@ function answerQuestion(answer) {
   }
 
   void playFeedback(isCorrect);
+  if (!isCorrect) {
+    void playCorrection(currentQuestion, answer, savedState.settings.speed);
+  }
   showFeedbackBurst(isCorrect, points);
   elements.answerState.textContent = isCorrect ? "太棒了" : "差一点";
-  elements.answerDetail.textContent = getAnswerDetail(currentQuestion);
+  elements.answerDetail.textContent = getAnswerDetail(currentQuestion, answer, isCorrect);
   elements.primaryAction.querySelector("span:last-child").textContent = session.answers.length >= GROUP_SIZE
     ? "完成本组"
     : "下一题";
@@ -322,8 +325,20 @@ function getQuestionDuration(question) {
   return Math.max(520, noteCount * (speedDurations[savedState.settings.speed] ?? 700));
 }
 
-function getAnswerDetail(question) {
+function getAnswerDetail(question, selectedAnswer = null, isCorrect = true) {
   const answer = formatAnswer(question);
+
+  if (question.kind === "pitch-lesson") {
+    return `${question.hint} · ${question.detail}`;
+  }
+
+  if (!isCorrect && question.kind === "pitch" && selectedAnswer) {
+    return `你选 ${selectedAnswer}，正确是 ${question.answer}。${question.hint ?? ""}`;
+  }
+
+  if (isCorrect && question.kind === "pitch" && question.answer === "1" && question.hint) {
+    return `正确答案：1 · ${question.hint}`;
+  }
 
   if (!question.detail || question.detail === answer) {
     return `正确答案：${answer}`;

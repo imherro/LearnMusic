@@ -59,6 +59,32 @@ export async function playFeedback(isCorrect) {
   });
 }
 
+export async function playCorrection(question, selectedAnswer, speed = "medium") {
+  if (question.kind !== "pitch" || !question.choiceNotes || !question.homeNote) {
+    return;
+  }
+
+  const selectedNote = question.choiceNotes[selectedAnswer];
+  const correctNote = question.choiceNotes[question.answer];
+
+  if (!selectedNote || !correctNote) {
+    return;
+  }
+
+  const context = await ensureAudio();
+  const timing = SPEEDS[speed] ?? SPEEDS.medium;
+  const sequence = [question.homeNote, selectedNote, question.homeNote, correctNote];
+  let cursor = context.currentTime + 0.22;
+
+  sequence.forEach((note, index) => {
+    playTone(context, note.midi, cursor, timing.note * 0.88, {
+      gain: index === 1 ? 0.12 : 0.2,
+      filterFrequency: index === 1 ? 1200 : 2100,
+    });
+    cursor += timing.note + timing.gap + (index === 1 ? 0.18 : 0);
+  });
+}
+
 function playTone(context, midi, startTime, duration, options = {}) {
   const oscillator = context.createOscillator();
   const overtone = context.createOscillator();

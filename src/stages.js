@@ -63,9 +63,25 @@ const INTERVAL_LADDER = [
 ];
 
 const PITCH_LADDER = [
+  ["1", "5"],
+  ["1", "3"],
+  ["3", "5"],
   ["1", "3", "5"],
-  ["1", "2", "3", "5", "6"],
-  ["1", "2", "3", "4", "5", "6", "7"],
+];
+
+const PITCH_LESSONS = [
+  {
+    degree: "1",
+    text: "1 是家，听起来最落地。",
+  },
+  {
+    degree: "3",
+    text: "3 很稳定，比 1 明亮一点。",
+  },
+  {
+    degree: "5",
+    text: "5 更开阔，像站得更高。",
+  },
 ];
 
 export function getStage(stageId) {
@@ -111,10 +127,18 @@ export function getQuestion(stageId, settings = {}) {
 }
 
 export function judgeAnswer(question, answer) {
+  if (question.kind === "pitch-lesson") {
+    return true;
+  }
+
   return String(question.answer) === String(answer);
 }
 
 export function formatAnswer(question) {
+  if (question.kind === "pitch-lesson") {
+    return `听熟 ${question.targetDegree}`;
+  }
+
   if (question.kind === "direction") {
     return question.answer === "up" ? "上升" : "下降";
   }
@@ -171,7 +195,11 @@ function getIntervalContrastQuestion(notes, requestedDirection = "random", answe
 }
 
 function getGuidedPitchQuestion(notes, answeredCount = 0) {
-  const pitchSet = PITCH_LADDER[Math.min(PITCH_LADDER.length - 1, Math.floor(answeredCount / 4))];
+  if (answeredCount < PITCH_LESSONS.length) {
+    return getPitchLessonQuestion(notes, PITCH_LESSONS[answeredCount]);
+  }
+
+  const pitchSet = PITCH_LADDER[Math.min(PITCH_LADDER.length - 1, Math.floor((answeredCount - PITCH_LESSONS.length) / 2))];
   const target = pickPitchNote(notes, pitchSet);
   const home = pickNearestHomeNote(notes, target);
 
@@ -182,8 +210,11 @@ function getGuidedPitchQuestion(notes, answeredCount = 0) {
     playNotes: [home, target],
     answer: target.degree,
     answers: pitchAnswers(pitchSet),
-    prompt: `先听 1，再辨目标音`,
+    choiceNotes: getChoiceNotes(notes, pitchSet, target),
+    homeNote: home,
+    prompt: pitchSet.length === 2 ? `二选一：${pitchSet.join(" / ")}` : `三选一：1 / 3 / 5`,
     detail: `1 → ${target.degree}`,
+    hint: getPitchHint(target.degree),
   };
 }
 
@@ -207,8 +238,30 @@ function getChallengeQuestion(notes, requestedDirection = "random", answeredCoun
     playNotes: [home, target],
     answer: target.degree,
     answers: pitchAnswers(["1", "2", "3", "4", "5", "6", "7"]),
+    choiceNotes: getChoiceNotes(notes, ["1", "2", "3", "4", "5", "6", "7"], target),
+    homeNote: home,
     prompt: "综合音高",
     detail: `1 → ${target.degree}`,
+  };
+}
+
+function getPitchLessonQuestion(notes, lesson) {
+  const target = pickPitchNote(notes, [lesson.degree]);
+  const home = pickNearestHomeNote(notes, target);
+
+  return {
+    stageId: 3,
+    kind: "pitch-lesson",
+    notes: [target],
+    playNotes: [home, target, home, target],
+    answer: "heard",
+    targetDegree: lesson.degree,
+    answers: [{ value: "heard", label: "听懂了" }],
+    choiceNotes: getChoiceNotes(notes, ["1", "3", "5"], target),
+    homeNote: home,
+    prompt: lesson.text,
+    detail: `1 → ${lesson.degree}`,
+    hint: lesson.text,
   };
 }
 
@@ -308,6 +361,35 @@ function pickNearestHomeNote(notes, target) {
       ? note
       : closest;
   }, null);
+}
+
+function getChoiceNotes(notes, degrees, target) {
+  return Object.fromEntries(degrees.map((degree) => {
+    const choices = notes.filter((note) => note.degree === degree);
+    const nearest = choices.reduce((closest, note) => {
+      if (!closest) {
+        return note;
+      }
+
+      return Math.abs(note.midi - target.midi) < Math.abs(closest.midi - target.midi)
+        ? note
+        : closest;
+    }, null);
+
+    return [degree, nearest];
+  }));
+}
+
+function getPitchHint(degree) {
+  return {
+    1: "1 是家，最落地。",
+    2: "2 像从 1 往上走，还没站稳。",
+    3: "3 明亮、稳定。",
+    4: "4 有点悬，想回到 3 或走向 5。",
+    5: "5 开阔、稳定。",
+    6: "6 比 5 更亮，但没有 1/3/5 那么落地。",
+    7: "7 很紧，想回到高音 1。",
+  }[degree] ?? "";
 }
 
 function formatNotes(notes) {
