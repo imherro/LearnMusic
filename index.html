@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LearnMusic</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="./src/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero" aria-label="练习面板">
+        <div class="brand-block">
+          <p class="eyebrow">C 大调听音</p>
+          <h1>LearnMusic</h1>
+        </div>
+
+        <div class="stage-rail" id="stageRail" aria-label="阶段"></div>
+
+        <section class="practice-surface" aria-label="当前题目">
+          <div class="progress-strip">
+            <div>
+              <p class="label">当前阶段</p>
+              <h2 id="stageTitle">两音高低</h2>
+            </div>
+            <div class="round-meter">
+              <span id="roundProgress">0 / 10</span>
+              <div class="meter-track" aria-hidden="true">
+                <div class="meter-fill" id="meterFill"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="listen-board">
+            <div class="pulse-orbit" aria-hidden="true">
+              <div class="pulse-ring"></div>
+              <div class="pulse-core" id="pulseCore">♪</div>
+            </div>
+            <div class="answer-state" id="answerState">准备</div>
+            <div class="answer-detail" id="answerDetail">第 1 阶段</div>
+          </div>
+
+          <div class="control-row">
+            <button class="primary-action" id="primaryAction" type="button">
+              <span aria-hidden="true">▶</span>
+              <span>开始</span>
+            </button>
+            <button class="icon-action" id="replayButton" type="button" aria-label="重听" title="重听" disabled>
+              ↻
+            </button>
+            <button class="icon-action" id="referenceButton" type="button" aria-label="播放 C" title="播放 C">
+              C
+            </button>
+          </div>
+
+          <div class="answer-grid" id="answerGrid" aria-label="答案选项"></div>
+        </section>
+      </section>
+
+      <aside class="side-panel" aria-label="设置和统计">
+        <section class="panel-section">
+          <h2>设置</h2>
+          <div class="field">
+            <label for="directionSelect">方向</label>
+            <select id="directionSelect">
+              <option value="random">随机</option>
+              <option value="up">上升</option>
+              <option value="down">下降</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="speedSelect">速度</label>
+            <select id="speedSelect">
+              <option value="slow">慢</option>
+              <option value="medium" selected>中</option>
+              <option value="fast">快</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="rangeSelect">音域</label>
+            <select id="rangeSelect">
+              <option value="low">低</option>
+              <option value="middle" selected>中</option>
+              <option value="high">高</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h2>本组</h2>
+          <div class="stat-grid">
+            <div>
+              <span id="correctCount">0</span>
+              <small>正确</small>
+            </div>
+            <div>
+              <span id="mistakeCount">0</span>
+              <small>错误</small>
+            </div>
+            <div>
+              <span id="unlockedCount">1</span>
+              <small>解锁</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-heading">
+            <h2>记录</h2>
+            <button class="text-action" id="resetButton" type="button">重置</button>
+          </div>
+          <ol class="history-list" id="historyList"></ol>
+        </section>
+      </aside>
+    </main>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

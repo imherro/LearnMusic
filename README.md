@@ -10,4 +10,12 @@
 - 使用 Web Audio API 直接生成声音。
 - 练习结果保存在本地浏览器中。
 
+## 本地运行
+
+```powershell
+.\scripts\serve.ps1
+```
+
+默认发布到 `http://127.0.0.1:8200/`。
+
 详细设计见 [docs/plans/2026-06-22-interval-trainer-design.md](docs/plans/2026-06-22-interval-trainer-design.md)。
